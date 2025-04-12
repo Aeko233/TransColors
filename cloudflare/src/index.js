@@ -4,7 +4,7 @@
  * 这个文件实现了一个 Cloudflare Worker，用于：
  * 1. 接收 Telegram Bot 的 Webhook 请求
  * 2. 处理用户消息
- * 3. 直接与 OpenAI API 通信
+ * 3. 直接与 AI API 通信
  * 4. 返回响应给用户
  */
 
@@ -162,39 +162,31 @@ async function checkAndUpdateUsage(userId, username, env) {
   };
 }
 
-  // 新增流式智能更新控制器
-  class UpdateController {
-    constructor() {
-      this.buffer = [];
-      this.lastUpdate = Date.now();
-      this.delay = 800;
-      this.minChars = 40;
-    }
-  
-    shouldUpdate(newContent) {
-      const timeDiff = Date.now() - this.lastUpdate;
-      const lengthDiff = newContent.length - (this.lastContent?.length || 0);
-      
-      return (
-        lengthDiff >= this.minChars ||
-        timeDiff > this.delay ||
-        newContent.endsWith('\n') ||
-        newContent.endsWith('。')
-      );
-    }
-  
-    async triggerUpdate(content, callback) {
-      this.lastContent = content;
-      this.lastUpdate = Date.now();
-      this.delay = Math.min(1500, this.delay * 1.2); // 动态增加延迟
-      await callback(content);
-    }
-  
-    reset() {
-      this.buffer = [];
-      this.delay = 800;
-    }
+// 新增流式智能更新控制器
+class UpdateController {
+  constructor() {
+    this.buffer = [];
+    this.lastUpdate = Date.now();
+    this.updateInterval = 2333; // 固定秒更新间隔
   }
+
+  shouldUpdate(newContent) {
+    const timeDiff = Date.now() - this.lastUpdate;
+    // 固定3秒更新一次
+    return timeDiff >= this.updateInterval;
+  }
+
+  async triggerUpdate(content, callback) {
+    this.lastContent = content;
+    this.lastUpdate = Date.now();
+    await callback(content);
+  }
+
+  reset() {
+    this.buffer = [];
+    this.lastUpdate = Date.now();
+  }
+}
 
 // 在handleRequest中添加结构化日志
 async function handleRequest(request, env) {
@@ -286,7 +278,7 @@ async function handleRequest(request, env) {
     }
 
     // 处理普通消息
-    return handleMessage(chatId, cleanText || text, username, userId, env);
+    return handleMessage(chatId, cleanText || text, username, userId, env, chatType);
   } catch (error) {
     console.error('处理请求时出错:', error);
     return new Response('发生错误: ' + error.message, { status: 500 });
@@ -460,7 +452,7 @@ async function handleCommand(chatId, command, username, userId, env) {
 /**
  * 处理普通消息
  */
-async function handleMessage(chatId, text, username, userId, env) {
+async function handleMessage(chatId, text, username, userId, env, chatType) {
   let placeholderMessageId = null;
   
   try {
@@ -524,7 +516,7 @@ async function handleMessage(chatId, text, username, userId, env) {
     console.log({
       event: "机器人回答结束",
       chat_id: chatId,
-      chat_type: chatType,
+      chat_type: chatType || 'unknown',
       user_id: userId,
       username: username});
     // 添加助手回复到历史
@@ -568,7 +560,7 @@ async function handleMessage(chatId, text, username, userId, env) {
  */
 async function callLLM(provider, text, messages, env, onData) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
   const modelConfig = MODELS[provider];
   
   // 系统提示词
@@ -582,9 +574,7 @@ async function callLLM(provider, text, messages, env, onData) {
 6. 职业发展：职业转换、远程工作、非传统生活方式支持
 7. 法律权益：各地相关法律知识、权益保障、应对歧视
 
-重要指导：当检测到用户询问比卡鲁胺、色普龙、雌二醇、螺内酯、醋酸环丙孕酮等和HRT有关的激素药物时，应理解这通常与HRT(激素替代疗法)相关。提供更具体的用药指导、剂量参考、效果时间线和风险管理，而不仅是一般的药物信息。主动提供这些药物在跨性别医疗中的特殊应用，同时说明这仅供参考，具体用药需遵医嘱。
-
-回答时保持开放、尊重和专业，不预设任何人的身份或选择。承认每个人的经历和需求都是独特的，避免给出一刀切的建议。提供信息时注明这些仅供参考，关键决策应结合个人情况和专业咨询。支持每个人打破常规、寻找自己道路的勇气。回复要简短。`;
+回答时保持开放、尊重和专业，不预设任何人的身份或选择。承认每个人的经历和需求都是独特的，避免给出一刀切的建议。提供信息时注明这些仅供参考，关键决策应结合个人情况和专业咨询。支持每个人打破常规、寻找自己道路的勇气。考虑用户一般在移动端使用, 回复要简短, 除非用户要求详细解释。`;
 
   // 根据提供商选择API密钥
   let apiKey;
