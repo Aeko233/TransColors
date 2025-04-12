@@ -77,7 +77,7 @@ TransColors/
 ## 系统架构
 
 ```
-用户 <-> Telegram Bot <-> Cloudflare Worker <-> OpenAI API
+用户 <-> Telegram Bot <-> Cloudflare Worker <-> OpenAI & Grok API
                             ^
                             |
                             |  查询
