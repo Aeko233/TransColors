@@ -672,7 +672,8 @@ async function editMessageText(chatId, messageId, text, env) {
       body: JSON.stringify({
         chat_id: chatId,
         message_id: messageId,
-        text: text
+        text: text,
+        parse_mode: 'Markdown'
       })
     });
   } catch (error) {
