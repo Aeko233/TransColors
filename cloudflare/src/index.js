@@ -521,7 +521,12 @@ async function handleMessage(chatId, text, username, userId, env) {
 
     // 最终更新消息
     await editMessageText(chatId, placeholderMessageId, finalAnswer, env);
-    
+    console.log({
+      event: "机器人回答结束",
+      chat_id: chatId,
+      chat_type: chatType,
+      user_id: userId,
+      username: username});
     // 添加助手回复到历史
     messages.push({role: "assistant", content: finalAnswer});
     
@@ -563,7 +568,7 @@ async function handleMessage(chatId, text, username, userId, env) {
  */
 async function callLLM(provider, text, messages, env, onData) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
   const modelConfig = MODELS[provider];
   
   // 系统提示词
@@ -579,7 +584,7 @@ async function callLLM(provider, text, messages, env, onData) {
 
 重要指导：当检测到用户询问比卡鲁胺、色普龙、雌二醇、螺内酯、醋酸环丙孕酮等和HRT有关的激素药物时，应理解这通常与HRT(激素替代疗法)相关。提供更具体的用药指导、剂量参考、效果时间线和风险管理，而不仅是一般的药物信息。主动提供这些药物在跨性别医疗中的特殊应用，同时说明这仅供参考，具体用药需遵医嘱。
 
-回答时保持开放、尊重和专业，不预设任何人的身份或选择。承认每个人的经历和需求都是独特的，避免给出一刀切的建议。提供信息时注明这些仅供参考，关键决策应结合个人情况和专业咨询。支持每个人打破常规、寻找自己道路的勇气。`;
+回答时保持开放、尊重和专业，不预设任何人的身份或选择。承认每个人的经历和需求都是独特的，避免给出一刀切的建议。提供信息时注明这些仅供参考，关键决策应结合个人情况和专业咨询。支持每个人打破常规、寻找自己道路的勇气。回复要简短。`;
 
   // 根据提供商选择API密钥
   let apiKey;
