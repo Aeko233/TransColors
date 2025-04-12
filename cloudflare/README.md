@@ -1,6 +1,6 @@
 # MedLLM Telegram Bot Worker
 
-运行在 Cloudflare Worker 上的 Telegram 机器人，可以直接与大模型 API（OpenAI、Anthropic、Google）通信，并提供药物信息查询服务。
+运行在 Cloudflare Worker 上的 Telegram 机器人，可以直接与大模型 API（OpenAI & Grok）通信，并提供药物信息查询服务。
 
 ## 优势
 
@@ -13,7 +13,7 @@
 
 - Cloudflare 账户
 - Telegram Bot API 令牌（从 [@BotFather](https://t.me/BotFather) 获取）
-- 大模型 API 密钥（OpenAI, Anthropic, Google）
+- 大模型 API 密钥（OpenAI & Grok）
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) 工具
 
 ## 安装与配置
@@ -100,8 +100,7 @@ curl "https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/setWebhook?url=<YOUR
 
 ## 参考文档
 
-- [Cloudflare Workers 文档](https://developers.cloudflare.com/workers/)
+- [Cloudflare Workers 文档](https://developers.cloudflare.com/workers)
 - [Telegram Bot API 文档](https://core.telegram.org/bots/api)
 - [OpenAI API 文档](https://platform.openai.com/docs/api-reference)
-- [Anthropic API 文档](https://docs.anthropic.com/claude/reference)
-- [Google AI API 文档](https://ai.google.dev/docs) 
+- [Grok API 文档](https://docs.x.ai/docs/api-reference#api-key)
