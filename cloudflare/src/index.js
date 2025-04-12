@@ -4,7 +4,7 @@
  * 这个文件实现了一个 Cloudflare Worker，用于：
  * 1. 接收 Telegram Bot 的 Webhook 请求
  * 2. 处理用户消息
- * 3. 直接与 AI API 通信
+ * 3. 直接与大模型 API 通信
  * 4. 返回响应给用户
  */
 
