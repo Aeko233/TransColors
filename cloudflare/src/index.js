@@ -36,9 +36,9 @@ Object.defineProperty(globalThis, "START_TIME", { value: Date.now() });
 
 // 使用量控制配置
 const RATE_LIMIT = {
-  REQUESTS_PER_USER: 30,     // 每个用户每天的请求上限
+  REQUESTS_PER_USER: 50,     // 每个用户每天的请求上限
   REQUESTS_PER_MINUTE: 10,    // 每个用户每分钟的请求上限
-  TOTAL_DAILY_LIMIT: 1000     // 所有用户每天的总请求上限
+  TOTAL_DAILY_LIMIT: 2000     // 所有用户每天的总请求上限
 };
 
 // 对话历史配置
