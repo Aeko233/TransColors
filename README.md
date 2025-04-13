@@ -52,7 +52,7 @@ TransColors/
     - Python 3.10+ (爬虫和数据处理)
     - JavaScript (Telegram Bot 和 API 调用)
     - Cloudflare Workers
-    - 大模型 API：OpenAI
+    - 大模型 API：OpenAI & Grok
     - ChromaDB 向量数据库
     - 数据源：多种
 
@@ -77,14 +77,14 @@ TransColors/
 ## 系统架构
 
 ```
-用户 <-> Telegram Bot <-> Cloudflare Worker <-> OpenAI API
+用户 <-> Telegram Bot <-> Cloudflare Worker <-> 大模型API（OpenAI&Grok）
                             ^
                             |
-                   查询    |
+                            |  查询
                             v
                        向量数据库 <-- 爬虫收集的药物数据
 ```
 
 ## 许可证
 
-本项目采用 [LICENSE](LICENSE) 许可证。
+本项目采用 [GNU General Public License v3.0](LICENSE) 许可证。
