@@ -54,6 +54,7 @@ const KV_KEYS = {
   USER_TIMESTAMPS: "user_ts:",       // 用户请求时间戳前缀
   TOTAL_REQUESTS: "total_requests",  // 总请求数
   LAST_RESET_DAY: "last_reset_day",  // 上次重置日期
+  USER_RESET_DATE: "user_reset:",    // 用户上次重置日期前缀
   ADMIN_USERS: "admin_users",        // 管理员用户名列表
   USER_MESSAGES: "user_messages:",   // 用户对话历史
   HISTORY_TTL: 86400 * HISTORY_CONFIG.TTL_DAYS  // 对话历史保存时间
@@ -89,22 +90,35 @@ async function checkAndUpdateUsage(userId, username, env) {
   const isAdmin = username && adminUsers.includes(username);
   
   const now = new Date();
-  const currentDay = now.getDate();
+  // 使用YYYY-MM-DD格式的日期字符串
+  const currentDateStr = now.toISOString().split('T')[0];
   
   // 获取上次重置日期
-  let lastResetDay = parseInt(await env.TRANS_COLORS_KV.get(KV_KEYS.LAST_RESET_DAY) || currentDay);
+  let lastResetDay = await env.TRANS_COLORS_KV.get(KV_KEYS.LAST_RESET_DAY) || currentDateStr;
   
-  // 检查是否需要重置每日计数
-  if (currentDay !== lastResetDay) {
+  // 获取用户的上次重置日期
+  const userResetKey = KV_KEYS.USER_RESET_DATE + userId;
+  let userLastResetDay = await env.TRANS_COLORS_KV.get(userResetKey) || "";
+  
+  // 检查是否需要重置全局计数
+  if (currentDateStr !== lastResetDay) {
     // 存储新的重置日期
-    await env.TRANS_COLORS_KV.put(KV_KEYS.LAST_RESET_DAY, currentDay.toString());
+    await env.TRANS_COLORS_KV.put(KV_KEYS.LAST_RESET_DAY, currentDateStr);
     
     // 重置总请求数
     await env.TRANS_COLORS_KV.put(KV_KEYS.TOTAL_REQUESTS, "0");
     
-    // 由于无法批量删除，重置计数器会在下面的代码中自动处理
-    // 当用户计数为0时
-    lastResetDay = currentDay;
+    lastResetDay = currentDateStr;
+  }
+  
+  // 检查是否需要重置此用户的计数
+  const userCountKey = KV_KEYS.USER_DAILY_COUNT + userId;
+  if (currentDateStr !== userLastResetDay) {
+    // 重置此用户的计数
+    await env.TRANS_COLORS_KV.put(userCountKey, "0");
+    // 更新用户的重置日期
+    await env.TRANS_COLORS_KV.put(userResetKey, currentDateStr);
+    userLastResetDay = currentDateStr;
   }
   
   // 获取总体每日请求数
@@ -119,7 +133,6 @@ async function checkAndUpdateUsage(userId, username, env) {
   }
   
   // 获取用户每日请求计数
-  const userCountKey = KV_KEYS.USER_DAILY_COUNT + userId;
   let userRequestCount = parseInt(await env.TRANS_COLORS_KV.get(userCountKey) || "0");
   
   // 检查用户每日限制
@@ -357,6 +370,38 @@ async function handleCommand(chatId, command, username, userId, env) {
 
     case '/quota':
       const userCountKey = KV_KEYS.USER_DAILY_COUNT + userId;
+      
+      // 检查日期，确保数据是最新的
+      const now = new Date();
+      const currentDateStr = now.toISOString().split('T')[0];
+      
+      // 获取上次重置日期
+      let lastResetDay = await env.TRANS_COLORS_KV.get(KV_KEYS.LAST_RESET_DAY) || currentDateStr;
+      
+      // 获取用户的上次重置日期
+      const userResetKey = KV_KEYS.USER_RESET_DATE + userId;
+      let userLastResetDay = await env.TRANS_COLORS_KV.get(userResetKey) || "";
+      
+      // 检查是否需要重置全局计数
+      if (currentDateStr !== lastResetDay) {
+        // 存储新的重置日期
+        await env.TRANS_COLORS_KV.put(KV_KEYS.LAST_RESET_DAY, currentDateStr);
+        
+        // 重置总请求数
+        await env.TRANS_COLORS_KV.put(KV_KEYS.TOTAL_REQUESTS, "0");
+        
+        lastResetDay = currentDateStr;
+      }
+      
+      // 检查是否需要重置此用户的计数
+      if (currentDateStr !== userLastResetDay) {
+        // 重置此用户的计数
+        await env.TRANS_COLORS_KV.put(userCountKey, "0");
+        // 更新用户的重置日期
+        await env.TRANS_COLORS_KV.put(userResetKey, currentDateStr);
+        userLastResetDay = currentDateStr;
+      }
+      
       const dailyCount = parseInt(await env.TRANS_COLORS_KV.get(userCountKey) || "0");
       const remainingCount = RATE_LIMIT.REQUESTS_PER_USER - dailyCount;
       
@@ -575,7 +620,7 @@ async function callLLM(provider, text, messages, env, onData) {
 7. 法律权益：各地相关法律知识、权益保障、应对歧视
 
 回答时保持开放、尊重和专业，不预设任何人的身份或选择。承认每个人的经历和需求都是独特的，避免给出一刀切的建议。提供信息时注明这些仅供参考，关键决策应结合个人情况和专业咨询。支持每个人打破常规、寻找自己道路的勇气。考虑用户一般在移动端使用, 回复要简短, 除非用户要求详细解释。
-禁止讨论以下话题: 煽动暴力或恐怖主义、非法色情内容(包括儿童色情)、泄露私人信息(doxing)、恶意软件或网络攻击、垃圾信息、贩卖毒品或武器等违法行为。如果用户提及这些内容，直接回复：“抱歉，这个话题违反 Telegram 规则，我无法讨论。我们聊点别的吧？”并建议安全主题。`;
+禁止讨论以下话题: 煽动暴力或恐怖主义、非法色情内容(包括儿童色情)、泄露私人信息(doxing)、恶意软件或网络攻击、垃圾信息、贩卖毒品或武器等违法行为。如果用户提及这些内容，直接回复："抱歉，这个话题违反 Telegram 规则，我无法讨论。我们聊点别的吧？"并建议安全主题。`;
 
   // 根据提供商选择API密钥
   let apiKey;
