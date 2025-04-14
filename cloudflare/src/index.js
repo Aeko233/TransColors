@@ -459,6 +459,7 @@ async function handleMessage(chatId, text, username, userId, env, chatType) {
     console.log({
       event: "机器人请求大模型API",
       chat_id: chatId,
+      chat_type: chatType || 'unknown',
       user_id: userId,
       username: username,
       text_length: text.length,
@@ -491,7 +492,11 @@ async function handleMessage(chatId, text, username, userId, env, chatType) {
       chat_id: chatId,
       chat_type: chatType || 'unknown',
       user_id: userId,
-      username: username});
+      username: username,
+      model: modelProvider,
+      message_text: finalAnswer.substring(0, 100),
+      timestamp: new Date().toISOString()
+    });
     
     messages.push({role: "assistant", content: finalAnswer});
     
