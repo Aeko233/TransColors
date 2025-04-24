@@ -30,6 +30,10 @@ const RATE_LIMIT = {
   TOTAL_DAILY_LIMIT: 2000     // 所有用户每天的总请求上限
 };
 
+const MESSAGE_LIMIT = {
+  MAX_LENGTH: 1024  // Telegram消息限制
+};
+
 const HISTORY_CONFIG = {
   MAX_ROUNDS: 10,             // 最多保存10轮对话
   TTL_DAYS: 7                 // 对话历史保存7天
@@ -436,10 +440,14 @@ async function handleCommand(chatId, command, username, userId, env) {
 
 async function handleMessage(chatId, text, username, userId, env, chatType) {
   let placeholderMessageId = null;
+  let currentMessageId = null;
+  let currentContent = '';
+  let lastContent = '';
   
   try {
     const placeholder = await sendMessageGetMessageid(chatId, "⏳ 正在思考中...", env);
     placeholderMessageId = placeholder.message_id;
+    currentMessageId = placeholderMessageId;
     
     await sendChatAction(chatId, 'typing', env);
 
@@ -477,16 +485,38 @@ async function handleMessage(chatId, text, username, userId, env, chatType) {
       messages,
       env,
       async (partial) => {
+        // 只处理新增的内容
+        const newContent = partial.slice(lastContent.length);
+        lastContent = partial;
         finalAnswer = partial;
+
         if (updateCtrl.shouldUpdate(partial)) {
-          await updateCtrl.triggerUpdate(partial, async (content) => {
-            await editMessageText(chatId, placeholderMessageId, content, env);
-          });
+          // 检查当前消息加上新内容是否会超出限制
+          if (currentContent.length + newContent.length >= MESSAGE_LIMIT.MAX_LENGTH - 100) { // 留出100字符的缓冲区
+            // 发送新消息
+            const newMessage = await sendMessageGetMessageid(chatId, newContent, env);
+            currentMessageId = newMessage.message_id;
+            currentContent = newContent;
+          } else {
+            // 更新当前消息
+            currentContent += newContent;
+            await editMessageText(chatId, currentMessageId, currentContent, env);
+          }
+          await updateCtrl.triggerUpdate(partial, async () => {});
         }
       }
     );
 
-    await editMessageText(chatId, placeholderMessageId, finalAnswer, env);
+    // 处理最后剩余的内容
+    const remainingContent = finalAnswer.slice(lastContent.length);
+    if (remainingContent) {
+      if (currentContent.length + remainingContent.length >= MESSAGE_LIMIT.MAX_LENGTH - 100) {
+        await sendMessage(chatId, remainingContent, env);
+      } else {
+        await editMessageText(chatId, currentMessageId, currentContent + remainingContent, env);
+      }
+    }
+
     console.log({
       event: "机器人回答结束",
       chat_id: chatId,
@@ -518,11 +548,8 @@ async function handleMessage(chatId, text, username, userId, env, chatType) {
       timestamp: new Date().toISOString()
     });
 
-    if (placeholderMessageId) {
-      await editMessageText(chatId, placeholderMessageId, "⚠️响应生成失败，请稍后重试", env);
-    };
     try {
-      await sendMessage(chatId, '抱歉，处理您的请求时发生错误，请稍后再试。', env);
+      await sendMessage(chatId, '⚠️ 抱歉，处理您的请求时发生错误，请联系开发者。', env);
     } catch (sendError) {
       console.error('发送错误消息时出错:', sendError);
     }
@@ -533,7 +560,7 @@ async function handleMessage(chatId, text, username, userId, env, chatType) {
 
 async function callLLM(provider, text, messages, env, onData) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), 120000);
   const modelConfig = MODELS[provider];
   
   const systemPrompt = `你是TransColors助手, 为所有追求自我定义、挑战既定命运的人提供支持和信息。你涵盖以下领域：
